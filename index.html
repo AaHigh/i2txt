@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipboard Image to Text OCR</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@v5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        #result { margin-top: 20px; white-space: pre-wrap; }
+        button { padding: 10px 20px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Clipboard Image OCR</h1>
+    <p>Paste an image (Ctrl+V) containing text.</p>
+    <button onclick="pasteFromClipboard()">Paste Image from Clipboard</button>
+    <div id="preview"></div>
+    <div id="result"></div>
+
+    <script>
+        async function pasteFromClipboard() {
+            try {
+                const items = await navigator.clipboard.read();
+                for (let item of items) {
+                    if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+                        const blob = await item.getType('image/png') || await item.getType('image/jpeg');
+                        const img = document.createElement('img');
+                        img.src = URL.createObjectURL(blob);
+                        document.getElementById('preview').innerHTML = '';
+                        document.getElementById('preview').appendChild(img);
+
+                        document.getElementById('result').textContent = 'Processing OCR...';
+                        const { data: { text } } = await Tesseract.recognize(img.src, 'eng', { logger: m => console.log(m) });
+                        document.getElementById('result').textContent = text || 'No text found.';
+                        return;
+                    }
+                }
+                alert('No image in clipboard.');
+            } catch (err) {
+                console.error(err);
+                alert('Clipboard access failed. Allow permissions and try again.');
+            }
+        }
+
+        document.addEventListener('paste', (e) => {
+            if (e.clipboardData.files.length > 0) {
+                const file = e.clipboardData.files[0];
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    document.getElementById('preview').innerHTML = '';
+                    document.getElementById('preview').appendChild(img);
+
+                    document.getElementById('result').textContent = 'Processing OCR...';
+                    Tesseract.recognize(img.src, 'eng').then(({ data: { text } }) => {
+                        document.getElementById('result').textContent = text || 'No text found.';
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>
